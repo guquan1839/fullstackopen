@@ -1,0 +1,8 @@
+title exercise 06
+
+browser->server: HTTP POST https://studies.cs.helsinki.fi/exampleapp/new_note_spa
+server-->browser: Http status code: 201 Created Content-Type: application/json {"message": "note created"}
+
+note over browser:
+browser updates the data to show the new version of note lists without refreshing the page
+end note
