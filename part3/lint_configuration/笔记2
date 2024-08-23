@@ -1,0 +1,98 @@
+Eslint 与代码检查
+一般情况下，应用程序应该接受完整的数据
+
+
+app.post('/api/notes',(request,response)   =>{
+    const body = request.body
+
+    if(body.content === undefined){
+        return response.status(400).json({error:"content missing"})
+    }
+})
+
+
+
+此外:我们还可以使用mongoose提供的验证功能
+
+const noteSchema = new mongoose.Schema(
+    {
+        content:{
+            type:String,
+            minLength:5,
+            required:true
+        },
+        important:Boolean
+    }
+)
+
+minLength:设置内容的最短字符长度
+required设置内容是否可以缺失
+
+
+则优化后的内容为:
+
+app.post('/api/notes',(request,response,next)   =>{
+    const body = request.body
+
+
+    const note = new Note(
+        {
+            content: body.content,
+            important:body.important || false,
+        }
+    )
+
+
+    note.save().then(
+        savedNote =>{
+            savedNote =>{
+                response.json(savedNote)
+            }
+        }
+    )
+    .catch(error => next(error))
+
+})
+
+
+
+const errorHandler = (error,request,response,next) =>{
+    console.error(error.message)
+
+
+    if(error.name === 'CastError'){
+        return response.status(400).send({error: "malformatted id"})
+    }
+
+    else if (error.name === "ValidationError"){
+        return response.status(400).json({error:error.message})
+    }
+
+    next(error)
+
+
+}
+
+
+而对于在更新数据时的验证，可以由下面代码实现:
+
+app.put('/api/notes/:id',(request,response,next)  =>{
+    const {content,important} =request.body
+
+    Note.findByIdUpdate(
+        request.params.id,
+        {content, important},
+        {new:true, runValidators:true, context: "query"}
+    ).then(updatedNote =>{
+        response.json(updatedNote)
+    })
+    .catch(error => next(error))
+
+})
+
+
+
+
+
+Deploying the database backend to production
+

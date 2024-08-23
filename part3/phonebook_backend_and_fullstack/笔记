@@ -1,0 +1,134 @@
+Node.js 与 Express
+
+Simple web server
+
+
+node -v检查运行版本
+
+npm initial 初始化一个 package.json文件。包含项目信息
+
+
+然后，在scripts处添加代码
+
+
+"start": "node index.js"
+
+
+然后创建一个index.js文件。
+node index.js
+
+注:index.js 前面代码
+
+
+Express
+下面我们学习更为流行的express库
+
+
+npm install Express
+
+
+nodemon 可以自动检测文件的状态，如果文件发生变化，nodemon将自动重启node服务
+
+
+Fetching a single resource
+
+下面我们将扩展应用来使其遵循REST架构
+
+*******代码已经修改
+
+Deleting resources
+
+
+the visual studio code rest client:通过这个插件我们可以实现发送各种请求。
+
+
+receiving data:
+
+json-parser的功能是将JSON数据转换为Javascript对象。
+然后在调用路由处理程序之前将其附加到request对象的Body属性。
+
+
+下面我们将给笔记添加ID。并且只有content部位空的时候才能对应用的数据进行添加。
+
+
+Middleware 
+
+json-parser是一个中间件
+
+中间件是可以处理 request 和 response对象的函数。
+
+当我们同时使用多个中间件的时候，程序会按照在Express在被使用的顺序一个一个地执行
+
+
+//把应用部署到网上
+
+Same origin policy and CORS
+
+我们需要 Node cors   中间件来允许来自其他原点的请求。
+
+
+Application to the Internet:
+
+为了使得项目能部署到互联网上，我们将使用Heroku来完成(这部分因为需要付费所以不再做3-9和3-10题)
+
+
+
+Frontend production build
+这部分讲述了如何构建一个生产模式下的版本！
+
+npm run build
+
+
+
+serving static files from the backend
+部署前端的一个选择是将生成构建复制到后端仓库的跟目录
+
+此外，我们需要express的内置中间件来显示静态内容
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Exercise 3.9-3.11
+
+3.9 phonebook backend step 9
+
+使后端与上一部分练习中的电话簿前端一起工作。
+
+我们需要对前端进行一些改动
+
+
+3.10将后端部署到互联网上
+
+使用heroku
+
+
+3.11(待定，这个需要部署到互联网)
+

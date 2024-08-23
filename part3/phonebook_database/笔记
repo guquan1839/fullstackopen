@@ -1,0 +1,202 @@
+Node.js 与 Express
+
+Simple web server
+
+
+node -v检查运行版本
+
+npm initial 初始化一个 package.json文件。包含项目信息
+
+
+然后，在scripts处添加代码
+
+
+"start": "node index.js"
+
+
+然后创建一个index.js文件。
+node index.js
+
+注:index.js 前面代码
+
+
+Express
+下面我们学习更为流行的express库
+
+
+npm install Express
+
+
+nodemon 可以自动检测文件的状态，如果文件发生变化，nodemon将自动重启node服务
+
+
+Fetching a single resource
+
+下面我们将扩展应用来使其遵循REST架构
+
+*******代码已经修改
+
+Deleting resources
+
+
+the visual studio code rest client:通过这个插件我们可以实现发送各种请求。
+
+
+receiving data:
+
+json-parser的功能是将JSON数据转换为Javascript对象。
+然后在调用路由处理程序之前将其附加到request对象的Body属性。
+
+
+下面我们将给笔记添加ID。并且只有content部位空的时候才能对应用的数据进行添加。
+
+
+Middleware 
+
+json-parser是一个中间件
+
+中间件是可以处理 request 和 response对象的函数。
+
+当我们同时使用多个中间件的时候，程序会按照在Express在被使用的顺序一个一个地执行
+
+
+将数据存入MongoDB
+
+
+首先安装mongoose
+后续见代码
+
+
+Error handling
+如果我们尝试访问一个不存在的笔记的url(及不是存储在数据库中的id),我们将设置为返回404 not found
+
+
+eg:
+
+if(note){
+    response.json(note)
+}
+else{
+    response.status(404).end()
+}
+
+
+如果出现错误的情况，使用catch抛出报错，返回500服务器错误
+
+.catch(error =>{
+    console.log(error)
+    response.status(500).end()
+})
+
+当然如果是id的格式不正确，更准确的状态码是400 Bad request
+
+.catch(error =>{
+    console.log(error)
+    response.status(400).send)({error: "malformatted id"})
+})
+
+
+Moving error handling into middleware
+
+使用next将错误传递下去
+
+app.get('/api/notes/:id',(request,response,next)   =>{
+    Note.findById(request.params.id)
+        .then(note =>
+        if(note){
+            response.json(note)
+        }
+        else{
+            response.status(404).end()
+        }
+        )
+
+
+        .catch(error => next(error))
+})
+
+
+const errorHandler = (error, request, response, next) =>{
+
+
+    console.error(error.message)
+
+    if(error.name === "CastError"){
+        return response.status(400).sned({error: "malformatted id"})
+    }
+
+    next(error)
+
+}
+
+
+app.use(errorHandler)
+
+
+The order of middleware loading
+中间件的执行顺序与它们被加载到express的app.use函数的顺序相同。
+
+下面为正确的顺序:
+
+app.use(express.static('dist'))
+app.use(express.json())
+app.use(requestLogger)
+
+
+app.post()
+
+const unknownEndpoint = (request,response)=>{
+    response.status(404).send({error:"unknown endpoint"})
+}
+
+
+app.use(unknownEndpoint)
+
+const errorHandler = (error,request,response,next)=>{
+    xxxxx
+}
+
+app.use(errorHandler)
+
+
+
+other operations 
+
+
+删除数据库常用方法：findByIdAndDelete
+
+app.delete('/api/notes/:id',(request,response,next)=>{
+    Note.findByIdAndDelete(request.params.id)
+        .then(
+            result=>{
+                response.status(204).end()
+            }
+        )
+        .catch(error => next(error))
+})
+
+
+app.put('/api/note/:id',(request,response,next)   =>{
+    const body = request.body
+
+    const note = {
+        content: body.content,
+        important:body.important,
+    }
+    Note.findByIdAndUpdate(request.params.id,note,{new:true})
+        .then(updatedNote =>{
+            response.json(updatedNote)
+        }
+
+        ).catch(error=>next(error))
+
+
+
+
+})
+
+注意findByIdAndUpdate函数的参数为javascript对象
+
+我们要设置 new:true，不然updatedNote是更新前的数据
+
+

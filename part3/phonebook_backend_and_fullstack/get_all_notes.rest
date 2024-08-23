@@ -1,0 +1,29 @@
+POST http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "name": "Li Hua",
+    "number": "+86-13923528765 "
+}
+###
+POST http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "name": "Li Hua",
+    "number": "+86-13923528765 "
+}
+###
+POST http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "number": "+86-13923528765 "
+}
+###
+POST http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "name": "Li Hua"
+}
