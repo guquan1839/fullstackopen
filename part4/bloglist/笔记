@@ -1,0 +1,442 @@
+Part 4 
+从后端结构到测试入门
+Project structure
+
+经过本章的学习，我们将使得项目的解构变成下面的样子
+
+├── index.js
+├── app.js
+├── dist
+│   └── ...
+├── controllers
+│   └── notes.js
+├── models
+│   └── note.js
+├── package-lock.json
+├── package.json
+├── utils
+│   ├── config.js
+│   ├── logger.js
+│   └── middleware.js  
+
+
+首先，将打印内容的功能放入模块 utils/logger.js中
+
+const info = (...params) =>{
+    console.log(...params)
+}
+
+const error = (...params) =>{
+    console.log(...params)
+}
+
+module.exports = {
+    info.error
+}
+
+info will show the normal log messages
+error function shows the error messages
+
+
+
+
+config.js save the environment variables
+
+require('dotenv').config()
+
+const PORT = process.env.PORT
+const MONGODB_URI = process.env.MONGODB_URI
+
+
+module.exports = {
+    MONGODB_URI,
+    PORT
+}
+
+
+其他模块可以通过导入config模块来获取环境变量
+
+
+const config = require('./utils/config')
+logger.info(`Server running on port ${config.PORT}`)
+
+
+
+则index.js文件的内容为:
+
+
+
+const app = require('./app')                 // 实际的express应用
+const config = require('./utils/config')
+const logger = require('./utils/logger')
+
+app.listen(config.PORT, () => {
+  logger.info(`Server running on port ${config.PORT}`)
+})
+
+index.js只负责导入实际的应用程序app.js并且启动它。
+logger模块的info函数输出 Server running on port信息，告诉我们程序正在运行！
+
+
+下面我们将处理路由模块 controllers/notes.js
+
+
+const notesRouter = require('express').Router()
+const Note  = require('../models/note')
+
+notesRouter.get('/',(request,response)=>{
+    Note.find({}).then(notes  =>{
+        response.json(notes)
+    })
+})
+
+notesRouter.get('/:id', (request, response, next) => {
+  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.post('/', (request, response, next) => {
+  const body = request.body
+
+  const note = new Note({
+    content: body.content,
+    important: body.important || false,
+  })
+
+  note.save()
+    .then(savedNote => {
+      response.json(savedNote)
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.delete('/:id', (request, response, next) => {
+  Note.findByIdAndDelete(request.params.id)
+    .then(() => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.put('/:id', (request, response, next) => {
+  const body = request.body
+
+  const note = {
+    content: body.content,
+    important: body.important,
+  }
+
+  Note.findByIdAndUpdate(request.params.id, note, { new: true })
+    .then(updatedNote => {
+      response.json(updatedNote)
+    })
+    .catch(error => next(error))
+})
+
+module.exports = notesRouter
+
+这个router实际上是个中间件！
+
+const notesRouter = require('./controllers/notes')
+app.use('/api/notes',notesRouter)
+
+
+更改后的APP.js变成下面的样子:
+const config = require('./utils/config')
+const express = require('express')
+const app = express()
+const cors = require('cors')
+const notesRouter = require('./controllers/notes')
+const middleware = require('./utils/middleware')
+const logger = require('./utils/logger')
+const mongoose = require('mongoose')
+
+mongoose.set('strictQuery', false)
+
+logger.info('connecting to', config.MONGODB_URI)
+
+mongoose.connect(config.MONGODB_URI)
+  .then(() => {
+    logger.info('connected to MongoDB')
+  })
+  .catch((error) => {
+    logger.error('error connecting to MongoDB:', error.message)
+  })
+
+app.use(cors())
+app.use(express.static('dist'))
+app.use(express.json())
+app.use(middleware.requestLogger)
+
+app.use('/api/notes', notesRouter)
+
+app.use(middleware.unknownEndpoint)
+app.use(middleware.errorHandler)
+
+module.exports = app
+
+
+
+其中我们将定制化中间件放置在 utils/middleware.js 模块
+
+const logger = require('./logger')
+
+const requestLogger = (request, response, next) => {
+  logger.info('Method:', request.method)
+  logger.info('Path:  ', request.path)
+  logger.info('Body:  ', request.body)
+  logger.info('---')
+  next()
+}
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+const errorHandler = (error, request, response, next) => {
+  logger.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
+
+  next(error)
+}
+
+module.exports = {
+  requestLogger,
+  unknownEndpoint,
+  errorHandler
+}
+
+
+
+note.js配置了Mongoose schema
+
+const mongoose = require('mongoose')
+
+const noteSchema = new mongoose.Schema({
+  content: {
+    type: String,
+    required: true,
+    minlength: 5
+  },
+  important: Boolean,
+})
+
+noteSchema.set('toJSON', {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString()
+    delete returnedObject._id
+    delete returnedObject.__v
+  }
+})
+
+module.exports = mongoose.model('Note', noteSchema)
+
+
+
+
+
+Note on exports:
+
+下面将介绍两种不同的导出方式
+第一种:
+
+module.exports = {
+    info,error
+}
+
+这种方法导出了一个对象，这个对象有两个字段并且都是函数。
+所以有两种使用方法:
+
+const logger =require('./utils/logger')
+
+logger.info('message')
+
+logger.error('error message')
+
+第二种方法:
+
+
+const {info,error} = require('./utils/logger')
+
+info('messsage')
+error('error message')
+
+
+
+
+如果导出方式为module.exports = notesRouter
+则唯一方法为const notesRouter = require('./controllers/notes')
+
+
+
+
+
+
+  Testing Node applications
+
+
+
+
+
+
+
+
+
+
+首先看一下我们将要完成的4个题:
+我们将要完成四个函数的编写，分别为:
+dummy
+totallikes
+favoriteBlog
+mostBlog
+mostLikes
+
+
+
+
+
+
+
+
+下面我们将学习自动化测试
+
+首先创建一个新文件utils/for_testing.js
+
+const reverse = (string) => {
+  return string
+    .split('')
+    .reverse()
+    .join('')
+}
+
+const average = (array) => {
+  const reducer = (sum, item) => {
+    return sum + item
+  }
+
+  return array.reduce(reducer, 0) / array.length
+}
+
+module.exports = {
+  reverse,
+  average,
+}
+
+现在有非常多的现成测试库供我们使用:
+Mocha Jest Vitest 还有Node的内置测试库node:test
+
+
+supertest我们需要使用supertest包来编写API测试
+
+const { test, after } = require('node:test')
+const mongoose = require('mongoose')
+const supertest = require('supertest')
+const app = require('../app')
+
+const api = supertest(app)
+
+test('notes are returned as json', async () => {
+  await api
+    .get('/api/notes')
+    .expect(200)
+    .expect('Content-Type', /application\/json/)
+})
+
+after(async () => {
+  await mongoose.connection.close()
+})
+
+首先我们导入express的应用程序，然后封装到superagent对象中
+
+.expect('Content-Type', /application\/json/)的第二个参数是一个正则表达式
+
+async 和 await用于实现异步功能：
+
+
+比如:
+
+const main = async () => {
+  const notes = await Note.find({})
+  console.log('operation returned the following notes', notes)
+
+  const response = await notes[0].remove()
+  console.log('the first note is removed')
+}
+
+
+main()
+
+
+此外，我们还需要注意在测试前初始化数据库。
+而初始化数据库是通过test模块中的beforeEach模块实现的
+
+const { test, after, beforeEach } = require('node:test')
+const Note = require('../models/note')
+
+
+const initialNotes = [
+  {
+    content: 'HTML is easy',
+    important: false,
+  },
+  {
+    content: 'Browser can execute only JavaScript',
+    important: true,
+  },
+]
+
+// ...
+
+
+beforeEach(async () => {
+  await Note.deleteMany({}) //开始时清空数据库
+  let noteObject = new Note(initialNotes[0]) //保存第一条notes数据
+  await noteObject.save()
+  noteObject = new Note(initialNotes[1])// 保存第二条Notes数据
+  await noteObject.save()
+})
+// ...
+当然可以使用foreach来进行优化:
+beforeEach(async () => {
+  await Note.deleteMany({})
+  console.log('cleared')
+
+  helper.initialNotes.forEach(async (note) => {
+    let noteObject = new Note(note)
+    await noteObject.save()
+    console.log('saved')
+  })
+  console.log('done')
+})
+
+test('notes are returned as json', async () => {
+  console.log('entered test')
+  // ...
+})
+
+
+
+除此之外，对于error handling，我们使用
+npm install express-async-errors
+来处理
+然后:
+require('express-async-errors')
+
+4.8 Blog List Tests, step 1
+
+使用super test, async/await 对api/blogs进行测试
+
+
+4.9 Blog List Tests, step 2
